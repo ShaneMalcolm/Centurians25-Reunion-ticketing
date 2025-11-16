@@ -7,7 +7,7 @@ export default function Navbar() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-[#222]/70 backdrop-blur-md">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-transparent backdrop-blur-md">
       <div className="container mx-auto flex justify-between items-center py-3 px-6">
         {/* Brand */}
         <Link to="/" className="text-xl font-semibold text-black hover:text-gray-700 transition">
