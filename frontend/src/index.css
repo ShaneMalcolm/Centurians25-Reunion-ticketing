@@ -5,6 +5,45 @@
 /* Flowbite */
 @import "flowbite";
 
+@font-face {
+  font-family: "Aeonik";
+  src: url("/src/assets/fonts/Aeonik/fonnts.com-Aeonik-Bold.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Aeonik";
+  src: url("/src/assets/fonts/Aeonik/fonnts.com-Aeonik-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+
+@font-face {
+  font-family: "Timernis";
+  src: url("/src/assets/fonts/Timernis/fonnts.com-timernis-black.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Timernis";
+  src: url("/src/assets/fonts/Balkey/fonnts.com-balkey.ttf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "SohneBreit";
+  src: url("/src/assets/fonts/Sohne/TestSohneBreit-Kraftig-BF663d89caa6b6c.otf")
+       format("opentype");
+  font-weight: 900; /* Extra-fett (extra bold) */
+  font-style: normal; /* Kursiv */
+  font-display: swap;
+}
+
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

@@ -6,7 +6,15 @@ module.exports = {
     "./public/index.html"          // HTML entry
   ],
   theme: {
-    extend: {}, // you can extend colors, fonts, etc. here later
+    extend: {
+    fontFamily: {
+      aeonik: ["Aeonik", "sans-serif"],
+      antelope: ["Antelope", "serif"],
+      timernis: ["Timernis", "serif"],
+      balkey: ["Balkey", "serif"],
+      sohneBreit: ["SohneBreit", "serif"],
+    },
+  },
   },
   plugins: [
     require('flowbite/plugin')

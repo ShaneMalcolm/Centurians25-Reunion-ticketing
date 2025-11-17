@@ -80,7 +80,7 @@ export async function generateTicketPDFAndSend(booking) {
       from: process.env.EMAIL_USER,
       to: user.email,
       subject: `Your Ticket — ${event.title}`,
-      text: `Hello ${booking.attendeeName},\n\nPlease find your ticket attached.\nBooking ID: ${booking.bookingRef}`,
+      text: `Hello ${booking.attendeeName},\n\nPlease find your batch party ticket attached.\nBooking ID: ${booking.bookingRef}`,
       attachments: [{ filename: "ticket.pdf", path: tempPath }],
     };
 
