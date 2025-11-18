@@ -1,24 +1,33 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { handleLogout } from "../utils/auth";
+import { HiMenu, HiX } from "react-icons/hi"; // hamburger & close icons
 
 export default function Navbar() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-transparent backdrop-blur-md font-sohneBreit">
       <div className="container mx-auto flex justify-between items-center py-3 px-6">
-        {/* Brand */}
+        {/* Brand / Logo */}
         <Link
           to="/"
-          className="text-xl font-semibold text-black hover:text-gray-700 transition cursor-pointer active:scale-95 pointer-events-auto"
+          className="flex items-center gap-2 cursor-pointer"
         >
-          Centurians’25 Ticketing
+          <img
+            src="/Centurians25-logo.png"
+            alt="Centurians25 Logo"
+            className="w-14 h-14 object-contain"
+          />
+          <span className={`text-l md:text-xl font-sohneBreit text-black hover:text-gray-700 transition sm:inline ${mobileMenuOpen ? "inline" : "hidden"}`}>
+            Centurians’25 Ticketing
+          </span>
         </Link>
 
-        {/* Navigation Links / User Info */}
-        <div className="flex items-center gap-4 z-50">
+        {/* Desktop Menu */}
+        <div className="hidden sm:flex items-center gap-4 z-50">
           {!user ? (
             <>
               <Link
@@ -48,7 +57,57 @@ export default function Navbar() {
             </>
           )}
         </div>
+
+        {/* Mobile Menu Button */}
+        <div className="sm:hidden z-50">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="text-black focus:outline-none"
+          >
+            {mobileMenuOpen ? <HiX size={28} /> : <HiMenu size={28} />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="sm:hidden bg-white/80 backdrop-blur-md w-full absolute top-full left-0 px-6 py-4 shadow-md flex flex-col gap-3">
+          {!user ? (
+            <>
+              <Link
+                to="/login"
+                className="text-black hover:text-gray-700 font-medium transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="text-black hover:text-gray-700 font-medium transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Register
+              </Link>
+            </>
+          ) : (
+            <>
+              <span className="text-black font-medium select-none">
+                Hi, {user.firstName}
+              </span>
+              <button
+                onClick={() => {
+                  handleLogout(navigate);
+                  setMobileMenuOpen(false);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded font-medium transition"
+              >
+                Logout
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Optional: add touch highlight for iOS */}
       <style>
         {`
