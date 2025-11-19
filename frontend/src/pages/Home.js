@@ -50,7 +50,7 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 text-gray-800">
       {/* Hero Section */}
       <section className="relative flex flex-col justify-center items-center h-screen px-4 text-center">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-sohneBreit font-bold mb-4 text-[#E6B800] [text-shadow:2px_1.5px_1px_rgba(255,215,0,0.8)] animate-fadeIn">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-sohneBreit font-bold mb-4 text-[#F1C55A] [text-shadow:2px_1.5px_1px_rgba(0,0,128,0.8)] animate-fadeIn">
           Welcome to CENTURIANS'25
         </h1>
         <p className="text-lg sm:text-xl md:text-2xl font-medium text-gray-700 opacity-0 animate-fadeIn delay-200">
@@ -80,7 +80,7 @@ export default function Home() {
       {/* Event Card */}
       <section
         ref={eventCardRef}
-        className="flex justify-center px-4 -mt-2 z-10 relative"
+        className="flex justify-center px-4 -mt-0 z-10 relative mb-10"
       >
         <div
           className={`max-w-4xl w-full bg-white rounded-xl overflow-hidden border border-yellow-200 shadow-2xl transition-all duration-700 ${eventCardVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
@@ -88,7 +88,7 @@ export default function Home() {
         >
           {/* Event Image */}
           <img
-            src={event.image || "/sample-event-chatgpt.jpg"}
+            src={event.image || "/Facebook Cover-CENTURIANS'25.jpg"}
             alt={event.title}
             className="w-full object-cover max-h-[450px] sm:max-h-[500px] md:max-h-[550px] transition-all duration-300"
           />
