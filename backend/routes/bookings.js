@@ -10,31 +10,30 @@ import { generateTicketPDFAndSend, generateTicketPDFBuffer } from "../utils/tick
 
 const router = express.Router();
 
-// create booking (initial, paymentStatus pending)
+// create booking
 router.post("/", auth, async (req, res) => {
   try {
-    const { attendeeName, contactNumber, tickets } = req.body; // tickets: 1 or 2
+    const { attendeeName, contactNumber, tickets, plus1Name } = req.body;
     const event = await Event.findOne({});
     if (!event) return res.status(400).json({ msg: "Event not configured" });
 
     const numTickets = tickets === 2 ? 2 : 1;
     const amount = event.price * numTickets;
 
-    // unique booking ref
     const bookingRef = "RB-" + crypto.randomBytes(6).toString("hex").toUpperCase();
 
     const booking = new Booking({
       user: req.user.id,
       attendeeName,
       contactNumber,
+      plus1Name: tickets === 2 ? plus1Name : undefined, // save only if plus1
       tickets: numTickets,
       amount,
       bookingRef,
     });
 
-    // generate QR payload (bookingRef + HMAC)
     const payload = { bookingRef, ts: Date.now() };
-    const secret = process.env.JWT_SECRET; // use a dedicated QR secret ideally
+    const secret = process.env.JWT_SECRET;
     const hmac = crypto.createHmac("sha256", secret).update(JSON.stringify(payload)).digest("hex");
     const qrPayload = { ...payload, sig: hmac };
     booking.qrCodeData = JSON.stringify(qrPayload);
@@ -46,6 +45,7 @@ router.post("/", auth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // add Plus 1 to an existing booking (pay extra)
 router.post("/:id/add-plusone", auth, async (req, res) => {

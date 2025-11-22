@@ -9,10 +9,11 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Initialize transporter
+// -----------------------------------------------------
+// EMAIL TRANSPORTER SETUP
+// -----------------------------------------------------
 let transporter;
 
-// Use real SMTP in production, fallback to Ethereal in dev
 if (process.env.NODE_ENV === "development") {
   nodemailer.createTestAccount().then((testAccount) => {
     transporter = nodemailer.createTransport({
@@ -24,7 +25,8 @@ if (process.env.NODE_ENV === "development") {
         pass: testAccount.pass,
       },
     });
-    console.log("Using Ethereal test account for emails:", testAccount.user);
+
+    console.log("Using Ethereal test account:", testAccount.user);
   });
 } else {
   transporter = nodemailer.createTransport({
@@ -36,101 +38,170 @@ if (process.env.NODE_ENV === "development") {
       pass: process.env.EMAIL_PASS,
     },
   });
-  console.log("Using real SMTP:", process.env.EMAIL_USER);
+
+  console.log("Using Production SMTP:", process.env.EMAIL_USER);
 }
 
-/**
- * Generates a PDF ticket and emails it to the user.
- */
+// -----------------------------------------------------
+// Helper: Format date & time (Sri Lanka)
+// -----------------------------------------------------
+function formatEventDate(dateString) {
+  const date = new Date(dateString);
+
+  const formattedDate = date
+    .toLocaleDateString("en-GB") // dd/mm/yyyy
+    .replace(/\//g, "/");
+
+  const formattedTime = "6.00 PM onwards";
+
+  return { formattedDate, formattedTime };
+}
+
+// -----------------------------------------------------
+// 1) GENERATE PDF & SEND EMAIL
+// -----------------------------------------------------
 export async function generateTicketPDFAndSend(booking) {
   try {
     const event = await Event.findOne({});
     if (!event) throw new Error("Event not found");
 
     const user = await User.findById(booking.user);
-    if (!user || !user.email) throw new Error("User email not found");
+    if (!user || !user.email) throw new Error("User email missing");
 
     const qrDataUrl = await QRCode.toDataURL(booking._id.toString());
+    const { formattedDate, formattedTime } = formatEventDate(event.date);
+
+    // Temporary PDF path
+    const tempPDF = path.join(process.cwd(), `tmp_ticket_${booking._id}.pdf`);
 
     const doc = new PDFDocument({ size: "A4" });
-    const tempPath = path.join(process.cwd(), `tmp_ticket_${booking._id}.pdf`);
-    const stream = fs.createWriteStream(tempPath);
+    const stream = fs.createWriteStream(tempPDF);
     doc.pipe(stream);
 
-    doc.fontSize(20).text(event.title, { align: "center" });
-    doc.moveDown();
-    doc.fontSize(14).text(`Booking ID: ${booking.bookingRef}`);
-    doc.text(`Attendee: ${booking.attendeeName}`);
-    doc.text(`Tickets: ${booking.tickets}`);
-    doc.text(`Amount: LKR ${booking.amount}`);
-    doc.text(`Status: ${booking.paymentStatus}`);
-    doc.moveDown();
-    doc.text(`Event: ${event.title}`);
-    doc.text(`Date: ${new Date(event.date).toLocaleString()}`);
+    // -----------------------------------------------------
+    // HEADER
+    // -----------------------------------------------------
+    doc.fontSize(26).text(event.title, { align: "center", underline: true });
+    doc.moveDown(1.5);
+
+    // -----------------------------------------------------
+    // BOOKING DETAILS
+    // -----------------------------------------------------
+    doc.fontSize(14).text(`Booking Reference: ${booking.bookingRef}`);
+    doc.text(`Primary Attendee: ${booking.attendeeName}`);
+
+    if (booking.plus1Name) {
+      doc.text(`Plus One: ${booking.plus1Name}`);
+    }
+
+    doc.text(`Contact Number: ${booking.contactNumber}`);
+    doc.text(`Tickets Purchased: ${booking.tickets}`);
+    doc.text(`Amount Paid: LKR ${booking.amount}`);
+    doc.moveDown(1);
+
+    // -----------------------------------------------------
+    // EVENT DETAILS
+    // -----------------------------------------------------
+    doc.fontSize(16).text("Event Details", { underline: true });
+    doc.moveDown(0.5);
+
+    doc.fontSize(14).text(`Date: ${formattedDate}`);
+    doc.text(`Time: ${formattedTime}`);
     doc.text(`Venue: ${event.venue}`);
-    doc.moveDown();
+    doc.moveDown(2);
 
+    // -----------------------------------------------------
+    // QR CODE
+    // -----------------------------------------------------
     const qrImageBuffer = Buffer.from(qrDataUrl.split(",")[1], "base64");
-    doc.image(qrImageBuffer, { fit: [150, 150], align: "center" });
+    doc.image(qrImageBuffer, {
+      fit: [180, 180],
+      align: "center",
+      valign: "center",
+    });
 
+    doc.moveDown(1);
+    doc.fontSize(12).text("Show this QR code at the entrance.", {
+      align: "center",
+    });
+
+    // END PDF
     doc.end();
+
     await new Promise((resolve) => stream.on("finish", resolve));
 
+    // -----------------------------------------------------
+    // SEND EMAIL
+    // -----------------------------------------------------
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: user.email,
-      subject: `Your Ticket — ${event.title}`,
-      text: `Hello ${booking.attendeeName},\n\nPlease find your batch party ticket attached.\nBooking ID: ${booking.bookingRef}`,
-      attachments: [{ filename: "ticket.pdf", path: tempPath }],
+      subject: `Your Ticket – ${event.title}`,
+      text: `Hi ${booking.attendeeName},\n\nAttached is your official ticket.\nShow the QR code at the entrance.\n\nThank you!`,
+      attachments: [{ filename: "ticket.pdf", path: tempPDF }],
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Ticket emailed to ${user.email} successfully!`);
+    console.log(`Ticket emailed to ${user.email}`);
 
     if (process.env.NODE_ENV === "development") {
       console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
     }
 
-    fs.unlinkSync(tempPath);
+    fs.unlinkSync(tempPDF);
   } catch (err) {
-    console.error("Error generating/sending ticket:", err.message);
+    console.error("Ticket generation error:", err.message);
     throw err;
   }
 }
 
-/**
- * Generates a PDF buffer for download (no email)
- */
+// -----------------------------------------------------
+// 2) GENERATE PDF BUFFER (FOR DIRECT DOWNLOAD)
+// -----------------------------------------------------
 export async function generateTicketPDFBuffer(booking, event, user) {
   try {
     const qrDataUrl = await QRCode.toDataURL(booking._id.toString());
+    const { formattedDate, formattedTime } = formatEventDate(event.date);
+
     const doc = new PDFDocument({ size: "A4" });
     const buffers = [];
     doc.on("data", buffers.push.bind(buffers));
 
     return new Promise((resolve, reject) => {
       doc.on("end", () => resolve(Buffer.concat(buffers)));
-      doc.on("error", (err) => reject(err));
+      doc.on("error", reject);
 
-      doc.fontSize(20).text(event.title, { align: "center" });
-      doc.moveDown();
-      doc.fontSize(14).text(`Booking ID: ${booking.bookingRef}`);
-      doc.text(`Attendee: ${booking.attendeeName}`);
+      doc.fontSize(26).text(event.title, { align: "center", underline: true });
+      doc.moveDown(1.5);
+
+      doc.fontSize(14).text(`Booking Reference: ${booking.bookingRef}`);
+      doc.text(`Primary Attendee: ${booking.attendeeName}`);
+
+      if (booking.plus1Name) {
+        doc.text(`Plus One: ${booking.plus1Name}`);
+      }
+
+      doc.text(`Contact Number: ${booking.contactNumber}`);
       doc.text(`Tickets: ${booking.tickets}`);
       doc.text(`Amount: LKR ${booking.amount}`);
-      doc.text(`Status: ${booking.paymentStatus}`);
-      doc.moveDown();
-      doc.text(`Event: ${event.title}`);
-      doc.text(`Date: ${new Date(event.date).toLocaleString()}`);
+      doc.moveDown(1);
+
+      doc.fontSize(16).text("Event Details", { underline: true });
+      doc.fontSize(14);
+      doc.text(`Date: ${formattedDate}`);
+      doc.text(`Time: ${formattedTime}`);
       doc.text(`Venue: ${event.venue}`);
-      doc.moveDown();
+      doc.moveDown(1.5);
 
       const qrImageBuffer = Buffer.from(qrDataUrl.split(",")[1], "base64");
-      doc.image(qrImageBuffer, { fit: [150, 150], align: "center" });
+      doc.image(qrImageBuffer, {
+        fit: [180, 180],
+        align: "center",
+      });
 
       doc.end();
     });
   } catch (err) {
-    throw new Error(`Error generating PDF buffer: ${err.message}`);
+    throw new Error("PDF buffer error: " + err.message);
   }
 }
