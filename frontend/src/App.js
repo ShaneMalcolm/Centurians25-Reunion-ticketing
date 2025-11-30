@@ -12,6 +12,7 @@ import FakePayment from "./pages/FakePayment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
+import UserProfile from "./pages/UserProfile";
 
 function App() {
   return (
@@ -26,7 +27,8 @@ function App() {
         <Route path="/booking/:id?" element={<ProtectedRoute> <Booking /> </ProtectedRoute> } />
         <Route path="/payment/:bookingId" element={<ProtectedRoute> <FakePayment /> </ProtectedRoute>} />
         <Route path="/success/:bookingId" element={<ProtectedRoute> <PaymentSuccess /> </ProtectedRoute>} />
-        <Route path="/profile" element={<Profile />} />
+        {/* <Route path="/profile" element={<Profile />} /> */}
+        <Route path="/profile" element={<UserProfile />} />
         <Route path="/admin" element={<Admin />} />
       </Routes>
     </Router>
