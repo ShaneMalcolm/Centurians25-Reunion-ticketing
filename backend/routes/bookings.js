@@ -46,6 +46,16 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
+// get all bookings for logged-in user
+router.get("/user", auth, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ user: req.user.id }).sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // add Plus 1 to an existing booking (pay extra)
 router.post("/:id/add-plusone", auth, async (req, res) => {
@@ -55,15 +65,37 @@ router.post("/:id/add-plusone", auth, async (req, res) => {
     if (booking.tickets === 2) return res.status(400).json({ msg: "Already has plus one" });
 
     const event = await Event.findOne({});
+    if (!event) return res.status(400).json({ msg: "Event not configured" });
+
+    // Update booking details
     booking.tickets = 2;
+    booking.plus1Name = req.body.plus1Name;
     booking.amount = event.price * 2;
-    booking.paymentStatus = "pending"; // re-pay
+    booking.paymentStatus = "pending"; // re-pay required
+
+    // ❗ IMPORTANT: Regenerate QR Code payload
+    const payload = { bookingRef: booking.bookingRef, ts: Date.now() };
+    const secret = process.env.JWT_SECRET;
+
+    const hmac = crypto
+      .createHmac("sha256", secret)
+      .update(JSON.stringify(payload))
+      .digest("hex");
+
+    const qrPayload = { ...payload, sig: hmac };
+
+    // Save new QR Code data
+    booking.qrCodeData = JSON.stringify(qrPayload);
+
     await booking.save();
+
     res.json(booking);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // get booking by id (for users/admin)
 router.get("/:id", auth, async (req, res) => {

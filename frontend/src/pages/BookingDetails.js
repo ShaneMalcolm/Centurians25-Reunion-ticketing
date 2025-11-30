@@ -1,3 +1,4 @@
+//frontend\src\pages\BookingDetails.js
 import axios from "../api/axios";
 
 function DownloadTicketButton({ bookingId }) {

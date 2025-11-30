@@ -45,9 +45,10 @@ export default function Navbar() {
             </>
           ) : (
             <>
+            <Link to="/profile">
               <span className="text-black font-medium select-none">
                 Hi, {user.firstName}
-              </span>
+              </span></Link>
               <button
                 onClick={() => handleLogout(navigate)}
                 className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded font-medium transition cursor-pointer active:scale-95 pointer-events-auto"
@@ -91,9 +92,10 @@ export default function Navbar() {
             </>
           ) : (
             <>
+            <Link to="/profile">
               <span className="text-black font-medium select-none">
                 Hi, {user.firstName}
-              </span>
+              </span></Link>
               <button
                 onClick={() => {
                   handleLogout(navigate);

@@ -1,3 +1,4 @@
+//frontend\src\api\auth.js
 import axios from "./axios";
 
 export const registerUser = async (data) => {
