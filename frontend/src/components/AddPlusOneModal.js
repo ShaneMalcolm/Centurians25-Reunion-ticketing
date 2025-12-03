@@ -21,7 +21,7 @@ export default function AddPlusOneModal({ booking, onClose, refresh }) {
       toast.success("Plus one added. Redirecting to payment...");
       refresh();
       onClose();
-      navigate(`/payment/${booking._id}`);
+      navigate(`/manual-payment/${booking._id}`);
     } catch (err) {
       console.error(err);
       toast.error("Failed to add plus one");
@@ -33,7 +33,7 @@ export default function AddPlusOneModal({ booking, onClose, refresh }) {
       <div className="bg-white p-6 w-full max-w-md rounded-xl shadow-xl">
         <h3 className="text-xl font-bold text-gray-800 mb-4">Add Plus One</h3>
 
-        <p className="text-gray-600 mb-2">Booking ID: {booking._id}</p>
+        <p className="text-gray-600 mb-2">Booking ID: {booking.bookingRef}</p>
 
         <input
           type="text"
