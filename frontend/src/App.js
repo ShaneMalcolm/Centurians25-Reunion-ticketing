@@ -11,8 +11,11 @@ import Admin from "./pages/Admin";
 import FakePayment from "./pages/FakePayment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 import Navbar from "./components/Navbar";
 import UserProfile from "./pages/UserProfile";
+import ManualPayment from "./pages/ManualPayment";
+import ProfileBookings from "./pages/ProfileBookings";
 
 function App() {
   return (
@@ -29,7 +32,9 @@ function App() {
         <Route path="/success/:bookingId" element={<ProtectedRoute> <PaymentSuccess /> </ProtectedRoute>} />
         {/* <Route path="/profile" element={<Profile />} /> */}
         <Route path="/profile" element={<UserProfile />} />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/profilebookings" element={<ProfileBookings />} />
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+        <Route path="/manual-payment/:bookingId" element={<ProtectedRoute> <ManualPayment /> </ProtectedRoute>} />
       </Routes>
     </Router>
   );

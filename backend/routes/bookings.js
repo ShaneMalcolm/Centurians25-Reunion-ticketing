@@ -7,10 +7,15 @@ import auth from "../middleware/auth.js";
 import crypto from "crypto";
 import QRCode from "qrcode";
 import { generateTicketPDFAndSend, generateTicketPDFBuffer } from "../utils/ticket.js";
+import cloudinary from "../config/cloudinary.js";
+import upload from "../middleware/upload.js";
+import streamifier from "streamifier";
 
 const router = express.Router();
 
-// create booking
+/* ----------------------------
+   existing: create booking
+   ---------------------------- */
 router.post("/", auth, async (req, res) => {
   try {
     const { attendeeName, contactNumber, tickets, plus1Name } = req.body;
@@ -20,13 +25,33 @@ router.post("/", auth, async (req, res) => {
     const numTickets = tickets === 2 ? 2 : 1;
     const amount = event.price * numTickets;
 
-    const bookingRef = "RB-" + crypto.randomBytes(6).toString("hex").toUpperCase();
+    /* ------------------------------------------
+       Generate sequential bookingRef: ET-C001
+       ------------------------------------------ */
+
+    // Find last bookingRef
+    const lastBooking = await Booking.findOne()
+      .sort({ createdAt: -1 }) // latest
+      .select("bookingRef");
+
+    let nextNumber = 1;
+
+    if (lastBooking && lastBooking.bookingRef) {
+      const lastNum = parseInt(lastBooking.bookingRef.replace("ET-C", ""));
+      if (!isNaN(lastNum)) {
+        nextNumber = lastNum + 1;
+      }
+    }
+
+    const bookingRef = "ET-C" + String(nextNumber).padStart(3, "0");
+
+    /* ------------------------------------------ */
 
     const booking = new Booking({
       user: req.user.id,
       attendeeName,
       contactNumber,
-      plus1Name: tickets === 2 ? plus1Name : undefined, // save only if plus1
+      plus1Name: tickets === 2 ? plus1Name : undefined,
       tickets: numTickets,
       amount,
       bookingRef,
@@ -46,7 +71,9 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
-// get all bookings for logged-in user
+/* ----------------------------
+   existing: get bookings for user
+   ---------------------------- */
 router.get("/user", auth, async (req, res) => {
   try {
     const bookings = await Booking.find({ user: req.user.id }).sort({ createdAt: -1 });
@@ -56,8 +83,122 @@ router.get("/user", auth, async (req, res) => {
   }
 });
 
+/* ----------------------------
+   Upload receipt (Bank transfer)
+   POST /api/bookings/:id/upload-receipt
+   - auth required (user)
+   - file in `receipt` form field (image/pdf)
+   - stores receiptUrl, receiptPublicId, receiptStatus="pending"
+   ---------------------------- */
+router.post("/:id/upload-receipt", auth, upload.single("receipt"), async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ msg: "Booking not found" });
 
-// add Plus 1 to an existing booking (pay extra)
+    // Only owner can upload
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ msg: "Not authorized" });
+    }
+
+    if (!req.file) return res.status(400).json({ msg: "No file uploaded" });
+
+    // Determine Cloudinary resource type based on file type
+    const isPDF = req.file.mimetype === "application/pdf";
+    const resourceType = isPDF ? "raw" : "auto";
+
+    // Preserve original filename + extension
+    const originalName = req.file.originalname.replace(/\s+/g, "_"); // remove spaces
+    const publicId = `reunion_receipts/${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 5)}_${originalName}`;
+
+    // upload buffer to Cloudinary via upload_stream
+    const bufferStream = streamifier.createReadStream(req.file.buffer);
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: "reunion_receipts",
+          resource_type: resourceType,
+          public_id: publicId,
+          use_filename: false,
+          unique_filename: false,
+          overwrite: false,
+        },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
+      bufferStream.pipe(uploadStream);
+    });
+
+    // Save Cloudinary info to booking
+    booking.receiptUrl = uploadResult.secure_url;
+    booking.receiptPublicId = uploadResult.public_id;
+    booking.receiptStatus = "pending";
+    booking.receiptUploadedAt = new Date();
+    await booking.save();
+
+    res.json({
+      msg: "Receipt uploaded and awaiting verification",
+      receiptUrl: booking.receiptUrl,
+      booking,
+    });
+  } catch (err) {
+    console.error("Upload receipt error:", err);
+    res.status(500).json({ error: err.message || err.toString() });
+  }
+});
+
+/* ----------------------------
+   Admin verifies or rejects a receipt
+   POST /api/bookings/:id/verify-receipt
+   body: { action: 'approve'|'reject', note?: string }
+   requires auth and req.user.isAdmin === true
+   ---------------------------- */
+router.post("/:id/verify-receipt", auth, async (req, res) => {
+  try {
+    // require admin
+    if (!req.user.isAdmin) return res.status(403).json({ msg: "Admin only" });
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ msg: "Booking not found" });
+
+    const { action, note } = req.body;
+    if (!["approve", "reject"].includes(action)) {
+      return res.status(400).json({ msg: "Invalid action" });
+    }
+
+    if (action === "approve") {
+      booking.receiptStatus = "verified";
+      // Mark booking as paid automatically? optional — decision: mark as paid
+      booking.paymentStatus = "paid";
+      booking.transactionId = "MANUAL-" + Date.now();
+    } else {
+      booking.receiptStatus = "rejected";
+    }
+    booking.receiptNote = note || "";
+    await booking.save();
+
+    // if approved: regenerate + email ticket (async, but catch errors)
+    if (action === "approve") {
+      try {
+        await generateTicketPDFAndSend(booking);
+      } catch (err) {
+        console.error("Failed to generate/send ticket after approval:", err.message);
+      }
+    }
+
+    res.json({ msg: "Receipt processed", booking });
+  } catch (err) {
+    console.error("Verify receipt error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ----------------------------
+   existing: add plus one (keeps QR regen)
+   ---------------------------- */
 router.post("/:id/add-plusone", auth, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -67,28 +208,28 @@ router.post("/:id/add-plusone", auth, async (req, res) => {
     const event = await Event.findOne({});
     if (!event) return res.status(400).json({ msg: "Event not configured" });
 
-    // Update booking details
     booking.tickets = 2;
     booking.plus1Name = req.body.plus1Name;
     booking.amount = event.price * 2;
-    booking.paymentStatus = "pending"; // re-pay required
+    booking.paymentStatus = "pending";
 
-    // ❗ IMPORTANT: Regenerate QR Code payload
     const payload = { bookingRef: booking.bookingRef, ts: Date.now() };
     const secret = process.env.JWT_SECRET;
-
-    const hmac = crypto
-      .createHmac("sha256", secret)
-      .update(JSON.stringify(payload))
-      .digest("hex");
-
+    const hmac = crypto.createHmac("sha256", secret).update(JSON.stringify(payload)).digest("hex");
     const qrPayload = { ...payload, sig: hmac };
-
-    // Save new QR Code data
     booking.qrCodeData = JSON.stringify(qrPayload);
 
-    await booking.save();
+    // If there was a prior receipt, invalidate it (mark rejected) - recommended
+    if (booking.receiptPublicId) {
+      // Optionally remove from cloudinary OR mark as rejected
+      booking.receiptStatus = "none";
+      booking.receiptUrl = undefined;
+      booking.receiptPublicId = undefined;
+      booking.receiptUploadedAt = undefined;
+      booking.receiptNote = "Invalidated due to booking update (plus one added).";
+    }
 
+    await booking.save();
     res.json(booking);
   } catch (err) {
     console.error(err);
@@ -96,33 +237,17 @@ router.post("/:id/add-plusone", auth, async (req, res) => {
   }
 });
 
-
-// get booking by id (for users/admin)
+/* ----------------------------
+   existing: get booking by id
+   ---------------------------- */
 router.get("/:id", auth, async (req, res) => {
   const booking = await Booking.findById(req.params.id);
   res.json(booking);
 });
 
-// endpoint to regenerate ticket PDF and email (admin/users)
-router.post("/:id/send-ticket", auth, async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ msg: "Booking not found" });
-
-    // regenerate and send ticket (only for paid bookings)
-    if (booking.paymentStatus !== "paid") return res.status(400).json({ msg: "Booking not paid" });
-
-    await generateTicketPDFAndSend(booking);
-    res.json({ msg: "Ticket sent" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * DEV ONLY: mark booking as paid
- * Updates paymentStatus, generates ticket PDF, and sends email to user.
- */
+/* ----------------------------
+   existing: mark-paid (dev)
+   ---------------------------- */
 router.post("/:id/mark-paid", async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -132,7 +257,6 @@ router.post("/:id/mark-paid", async (req, res) => {
     booking.transactionId = "DEV-" + Date.now();
     await booking.save();
 
-    // Fetch user to ensure email exists
     const user = await User.findById(booking.user);
     if (!user || !user.email) {
       console.warn(`Booking ${booking._id} paid, but user email missing.`);
@@ -158,7 +282,9 @@ router.post("/:id/mark-paid", async (req, res) => {
   }
 });
 
-// Download ticket PDF
+/* ----------------------------
+   existing: download ticket
+   ---------------------------- */
 router.get("/:id/ticket", auth, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
