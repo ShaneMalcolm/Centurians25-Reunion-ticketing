@@ -18,38 +18,39 @@ const router = express.Router();
    ---------------------------- */
 router.post("/", auth, async (req, res) => {
   try {
-    const { attendeeName, contactNumber, tickets, plus1Name } = req.body;
+    const { tickets, plus1Name } = req.body;
+
+    // Load user
+    const user = await User.findById(req.user.id)
+      .select("firstName lastName class contactNumber");
+
+    if (!user) return res.status(400).json({ msg: "User not found" });
+
+    const attendeeName = `${user.firstName} ${user.lastName}`;
+    const className = user.class;
+    const contactNumber = user.contactNumber;
+
+    // Load event
     const event = await Event.findOne({});
     if (!event) return res.status(400).json({ msg: "Event not configured" });
 
     const numTickets = tickets === 2 ? 2 : 1;
     const amount = event.price * numTickets;
 
-    /* ------------------------------------------
-       Generate sequential bookingRef: ET-C001
-       ------------------------------------------ */
-
-    // Find last bookingRef
-    const lastBooking = await Booking.findOne()
-      .sort({ createdAt: -1 }) // latest
-      .select("bookingRef");
-
+    // Generate bookingRef
+    const lastBooking = await Booking.findOne().sort({ createdAt: -1 });
     let nextNumber = 1;
-
-    if (lastBooking && lastBooking.bookingRef) {
+    if (lastBooking?.bookingRef) {
       const lastNum = parseInt(lastBooking.bookingRef.replace("ET-C", ""));
-      if (!isNaN(lastNum)) {
-        nextNumber = lastNum + 1;
-      }
+      if (!isNaN(lastNum)) nextNumber = lastNum + 1;
     }
+    const bookingRef = `ET-C${String(nextNumber).padStart(3, "0")}`;
 
-    const bookingRef = "ET-C" + String(nextNumber).padStart(3, "0");
-
-    /* ------------------------------------------ */
-
+    // Create booking
     const booking = new Booking({
       user: req.user.id,
       attendeeName,
+      class: className,        // <-- NEW
       contactNumber,
       plus1Name: tickets === 2 ? plus1Name : undefined,
       tickets: numTickets,
@@ -57,11 +58,13 @@ router.post("/", auth, async (req, res) => {
       bookingRef,
     });
 
+    // QR
     const payload = { bookingRef, ts: Date.now() };
-    const secret = process.env.JWT_SECRET;
-    const hmac = crypto.createHmac("sha256", secret).update(JSON.stringify(payload)).digest("hex");
-    const qrPayload = { ...payload, sig: hmac };
-    booking.qrCodeData = JSON.stringify(qrPayload);
+    const hmac = crypto.createHmac("sha256", process.env.JWT_SECRET)
+      .update(JSON.stringify(payload))
+      .digest("hex");
+
+    booking.qrCodeData = JSON.stringify({ ...payload, sig: hmac });
 
     await booking.save();
 
@@ -70,6 +73,10 @@ router.post("/", auth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
+
 
 /* ----------------------------
    existing: get bookings for user

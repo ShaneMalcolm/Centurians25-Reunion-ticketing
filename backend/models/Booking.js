@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 const BookingSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   attendeeName: { type: String, required: true },
+  class: { type: String },
   contactNumber: { type: String, required: true },
   plus1Name: { type: String },
   tickets: { type: Number, enum: [1,2], default: 1 },
