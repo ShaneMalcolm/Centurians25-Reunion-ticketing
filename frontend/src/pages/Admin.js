@@ -39,7 +39,7 @@ export default function Admin() {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6 mt-10 text-center">Admin Dashboard</h1>
 
       <div className="overflow-x-auto">
         <table className="w-full border border-gray-300 rounded-lg">

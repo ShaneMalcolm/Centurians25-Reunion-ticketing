@@ -1,4 +1,4 @@
-//frontend/src/pages/Booking.js
+// frontend/src/pages/Booking.js
 import { useState, useEffect } from "react";
 import axios from "../api/axios";
 import { useNavigate } from "react-router-dom";
@@ -11,29 +11,39 @@ export default function Booking() {
   const [plus1, setPlus1] = useState(false);
   const [plus1Name, setPlus1Name] = useState("");
   const [event, setEvent] = useState(null);
+  const [hasBooking, setHasBooking] = useState(false);
   const navigate = useNavigate();
 
   /* ------------------------------------------------------
-     Fetch Event + Prefill User Data (Name + Contact + Class)
-     ------------------------------------------------------ */
+     Fetch Event + Prefill User Data + Check Booking
+  ------------------------------------------------------ */
   useEffect(() => {
     async function loadData() {
       try {
+        // Fetch event
         const eventRes = await axios.get("/event");
         setEvent(eventRes.data);
 
         const token = localStorage.getItem("token");
         if (token) {
+          // Fetch user
           const userRes = await axios.get("/me", {
             headers: { Authorization: `Bearer ${token}` },
           });
-
           const user = userRes.data;
 
           const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
           if (fullName) setAttendeeName(fullName);
           if (user.contactNumber) setContactNumber(user.contactNumber);
-          if (user.class) setUserClass(user.class); // NEW
+          if (user.class) setUserClass(user.class);
+
+          // Check if user already has a booking
+          const bookingsRes = await axios.get("/bookings/user", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (bookingsRes.data.length > 0) {
+            setHasBooking(true);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -46,7 +56,7 @@ export default function Booking() {
 
   /* ------------------------------------------------------
      Submit Booking
-     ------------------------------------------------------ */
+  ------------------------------------------------------ */
   const handleBooking = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -56,7 +66,7 @@ export default function Booking() {
         {
           attendeeName,
           contactNumber,
-          class: userClass,  // NEW (sent to backend)
+          class: userClass,
           tickets: plus1 ? 2 : 1,
           plus1Name: plus1 ? plus1Name : undefined,
         },
@@ -75,7 +85,7 @@ export default function Booking() {
 
   /* ------------------------------------------------------
      UI
-     ------------------------------------------------------ */
+  ------------------------------------------------------ */
   if (!event)
     return (
       <div className="min-h-screen flex justify-center items-center text-gray-500">
@@ -83,10 +93,32 @@ export default function Booking() {
       </div>
     );
 
+  // If user already has a booking, show modal instead
+  if (hasBooking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div className="bg-white rounded-xl shadow-lg p-6 max-w-md text-center">
+          <h2 className="text-2xl font-bold mb-4 text-gray-800">
+            You Already Have a Booking
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Our records show that you have already made a booking. 
+            You can view your booking details in your profile.
+          </p>
+          <button
+            onClick={() => navigate("/profile")}
+            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
+          >
+            View Your Booking
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 pt-24 flex justify-center px-4">
       <div className="w-full max-w-xl bg-white shadow-xl rounded-2xl p-8 border border-gray-100 mb-10">
-
         <h2 className="text-3xl font-bold text-gray-800 mb-2 text-center tracking-tight">
           {event.title}
         </h2>
@@ -101,7 +133,6 @@ export default function Booking() {
               Your Details
             </h3>
 
-            {/* Name */}
             <label className="block text-gray-600 font-medium mb-1">Name</label>
             <input
               type="text"
@@ -110,7 +141,6 @@ export default function Booking() {
               className="w-full border border-gray-300 rounded-lg p-3 bg-gray-100"
             />
 
-            {/* Contact */}
             <label className="block text-gray-600 font-medium mt-4 mb-1">
               Contact Number
             </label>
@@ -121,7 +151,6 @@ export default function Booking() {
               className="w-full border border-gray-300 rounded-lg p-3 bg-gray-100"
             />
 
-            {/* CLASS - NEW FIELD */}
             <label className="block text-gray-600 font-medium mt-4 mb-1">
               Class
             </label>
@@ -138,7 +167,6 @@ export default function Booking() {
             <h3 className="text-lg font-semibold text-gray-700 mb-3 border-l-4 border-green-600 pl-3">
               Plus One
             </h3>
-
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"

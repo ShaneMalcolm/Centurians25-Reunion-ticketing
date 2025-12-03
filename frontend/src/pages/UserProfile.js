@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "../api/axios";
 import toast from "react-hot-toast";
 import AddPlusOneModal from "../components/AddPlusOneModal";
+import { Link } from "react-router-dom";
 
 export default function UserProfile() {
   const [bookings, setBookings] = useState([]);
@@ -77,18 +78,18 @@ export default function UserProfile() {
             >
               <div className="flex justify-between">
                 <p className="font-semibold text-gray-700">Booking ID:</p>
-                <p className="text-gray-800">{b.bookingRef}</p>
+                <p className="text-gray-800 font-medium">{b.bookingRef}</p>
               </div>
 
               <div className="flex justify-between mt-2">
                 <p className="font-semibold text-gray-700">Tickets:</p>
-                <p>{b.tickets}</p>
+                <p className="font-medium">{b.tickets}</p>
               </div>
 
-              {b.plus1Name && (
+              {b.attendeeName && (
                 <div className="flex justify-between mt-1">
-                  <p className="font-semibold text-gray-700">Plus One:</p>
-                  <p>{b.plus1Name}</p>
+                  <p className="font-semibold text-gray-700">Attendee:</p>
+                  <p className="font-medium">{b.attendeeName}{b.plus1Name ? ` + ${b.plus1Name}` : ""}</p>
                 </div>
               )}
 
@@ -115,6 +116,7 @@ export default function UserProfile() {
                   </button>
                 )}
 
+                {b.paymentStatus !== "paid" && <Link to={`/manual-payment/${b._id}`} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium w-full text-center">Upload Receipt</Link>}
                 {b.tickets === 1 && b.paymentStatus === "paid" && (
                   <button
                     onClick={() => setSelectedBooking(b)}

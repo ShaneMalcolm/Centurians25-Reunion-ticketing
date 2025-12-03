@@ -90,6 +90,7 @@ router.get("/user", auth, async (req, res) => {
   }
 });
 
+
 /* ----------------------------
    Upload receipt (Bank transfer)
    POST /api/bookings/:id/upload-receipt
