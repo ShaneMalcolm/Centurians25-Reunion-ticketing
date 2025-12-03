@@ -8,6 +8,8 @@ import eventRoutes from "./routes/events.js";
 import bookingRoutes from "./routes/bookings.js";
 import paymentRoutes from "./routes/CMBpayment.js";
 import webhookRoutes from "./routes/webhook.js";
+import adminRoutes from "./routes/admin.js";
+
 
 dotenv.config();
 const app = express();
@@ -23,6 +25,7 @@ app.use("/api/event", eventRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/webhook", webhookRoutes);
+app.use("/api/admin", adminRoutes);
 
 // simple health
 app.get("/", (req, res) => res.send("Reunion Ticketing API running"));

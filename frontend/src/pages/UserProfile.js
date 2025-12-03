@@ -77,7 +77,7 @@ export default function UserProfile() {
             >
               <div className="flex justify-between">
                 <p className="font-semibold text-gray-700">Booking ID:</p>
-                <p className="text-gray-800">{b._id}</p>
+                <p className="text-gray-800">{b.bookingRef}</p>
               </div>
 
               <div className="flex justify-between mt-2">

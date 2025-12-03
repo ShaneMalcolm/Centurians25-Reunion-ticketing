@@ -49,7 +49,7 @@ export default function Booking() {
 
       toast.success("Booking successful! Redirecting to payment...");
       setTimeout(() => {
-        navigate(`/payment/${res.data._id}`);
+        navigate(`/manual-payment/${res.data._id}`);
       }, 1500);
     } catch (err) {
       console.error(err);
