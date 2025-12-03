@@ -9,33 +9,36 @@ const router = express.Router();
 // ===== REGISTER + AUTO LOGIN =====
 router.post("/register", async (req, res) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, class: studentClass, contactNumber, email, password } = req.body;
 
-    // Check if email exists
+    // Check missing fields
+    if (!firstName || !lastName || !studentClass || !contactNumber || !email || !password) {
+      return res.status(400).json({ msg: "All fields are required" });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ msg: "Email already registered" });
 
-    // Password validation: min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special character
+    // Password validation
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-
     if (!passwordRegex.test(password)) {
       return res.status(400).json({
-        msg: "Password must be at least 8 characters, include an uppercase letter, a lowercase letter, and a number"
+        msg: "Password must be at least 8 characters, include uppercase, lowercase, number & special char."
       });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await User.create({
       firstName,
       lastName,
+      class: studentClass,
+      contactNumber,
       email,
       password: hashedPassword,
     });
 
-    // Issue JWT
     const token = jwt.sign(
       { id: newUser._id, isAdmin: newUser.isAdmin },
       process.env.JWT_SECRET,
@@ -49,16 +52,20 @@ router.post("/register", async (req, res) => {
         id: newUser._id,
         firstName: newUser.firstName,
         lastName: newUser.lastName,
+        class: newUser.class,
+        contactNumber: newUser.contactNumber,
         email: newUser.email,
+        isAdmin: newUser.isAdmin,
       },
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ msg: "Server error" });
   }
 });
 
-// ===== LOGIN =====
+
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -82,14 +89,18 @@ router.post("/login", async (req, res) => {
         id: user._id,
         firstName: user.firstName,
         lastName: user.lastName,
+        class: user.class,
+        contactNumber: user.contactNumber,
         email: user.email,
         isAdmin: user.isAdmin,
       },
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ msg: "Server error" });
   }
 });
+
 
 export default router;
