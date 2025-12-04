@@ -3,11 +3,12 @@
  * - Saves token & user to localStorage
  * - Redirects to Home page
  */
-export const handleAuthSuccess = (data, navigate) => {
+export const handleAuthSuccess = (data, navigate, redirect = "/") => {
   localStorage.setItem("token", data.token);
   localStorage.setItem("user", JSON.stringify(data.user));
-  navigate("/"); // redirect to Home page (or "/event" if you prefer)
+  navigate(redirect);
 };
+
 
 export const handleLogout = (navigate) => {
   localStorage.removeItem("token");
