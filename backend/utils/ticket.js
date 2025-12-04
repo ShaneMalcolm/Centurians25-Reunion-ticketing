@@ -87,6 +87,8 @@ async function buildTicketPDF(doc, booking, event, user) {
     leftY += wrappedHeight + lineSpacing;
   }
 
+  drawLeftDetail("BOOKING REF", booking.bookingRef)
+
   drawLeftDetail("PRIMARY ATTENDEE", booking.attendeeName);
 
   if (booking.plus1Name) {

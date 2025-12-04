@@ -116,7 +116,7 @@ export default function UserProfile() {
                   </button>
                 )}
 
-                {b.paymentStatus !== "paid" && <Link to={`/manual-payment/${b._id}`} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium w-full text-center">Upload Receipt</Link>}
+                {b.paymentStatus !== "paid" && <Link to={`/manual-payment/${b._id}`} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium w-full text-center">Re-upload Receipt</Link>}
                 {b.tickets === 1 && b.paymentStatus === "paid" && (
                   <button
                     onClick={() => setSelectedBooking(b)}
