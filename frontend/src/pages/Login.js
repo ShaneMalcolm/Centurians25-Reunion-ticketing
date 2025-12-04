@@ -29,7 +29,8 @@ export default function Login() {
       toast.success(`Welcome back, ${res.data.user.firstName}!`);
 
       setTimeout(() => {
-        handleAuthSuccess(res.data, navigate);
+        const destination = res.data.user.isAdmin ? "/admin" : "/";
+        handleAuthSuccess(res.data, navigate, destination);
       }, 1500);
     } catch (err) {
       toast.error(err.response?.data?.msg || "Login failed");
