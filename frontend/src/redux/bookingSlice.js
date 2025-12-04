@@ -1,3 +1,4 @@
+//frontend\src\redux\bookingSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
 const bookingSlice = createSlice({

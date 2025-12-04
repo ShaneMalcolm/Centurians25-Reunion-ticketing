@@ -1,80 +1,221 @@
+// frontend/src/pages/Booking.js
 import { useState, useEffect } from "react";
 import axios from "../api/axios";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 export default function Booking() {
   const [attendeeName, setAttendeeName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
+  const [userClass, setUserClass] = useState(""); // NEW
   const [plus1, setPlus1] = useState(false);
+  const [plus1Name, setPlus1Name] = useState("");
   const [event, setEvent] = useState(null);
+  const [hasBooking, setHasBooking] = useState(false);
   const navigate = useNavigate();
 
+  /* ------------------------------------------------------
+     Fetch Event + Prefill User Data + Check Booking
+  ------------------------------------------------------ */
   useEffect(() => {
-    async function fetchEvent() {
+    async function loadData() {
       try {
-        const res = await axios.get("/event");
-        setEvent(res.data);
+        // Fetch event
+        const eventRes = await axios.get("/event");
+        setEvent(eventRes.data);
+
+        const token = localStorage.getItem("token");
+        if (token) {
+          // Fetch user
+          const userRes = await axios.get("/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const user = userRes.data;
+
+          const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+          if (fullName) setAttendeeName(fullName);
+          if (user.contactNumber) setContactNumber(user.contactNumber);
+          if (user.class) setUserClass(user.class);
+
+          // Check if user already has a booking
+          const bookingsRes = await axios.get("/bookings/user", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (bookingsRes.data.length > 0) {
+            setHasBooking(true);
+          }
+        }
       } catch (err) {
         console.error(err);
-        alert("Failed to load event");
+        toast.error("Failed to load booking data");
       }
     }
-    fetchEvent();
+
+    loadData();
   }, []);
 
+  /* ------------------------------------------------------
+     Submit Booking
+  ------------------------------------------------------ */
   const handleBooking = async () => {
-    if (!attendeeName) return alert("Enter your name");
-
     try {
       const token = localStorage.getItem("token");
+
       const res = await axios.post(
         "/bookings",
         {
           attendeeName,
           contactNumber,
+          class: userClass,
           tickets: plus1 ? 2 : 1,
+          plus1Name: plus1 ? plus1Name : undefined,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
 
-      // redirect to payment page with booking ID
-      navigate(`/payment/${res.data._id}`);
+      toast.success("Booking successful! Redirecting...");
+      setTimeout(() => navigate(`/manual-payment/${res.data._id}`), 1500);
     } catch (err) {
       console.error(err);
-      alert("Booking failed: " + (err.response?.data?.msg || err.message));
+      toast.error("Booking failed");
     }
   };
 
-  if (!event) return <div>Loading...</div>;
+  /* ------------------------------------------------------
+     UI
+  ------------------------------------------------------ */
+  if (!event)
+    return (
+      <div className="min-h-screen flex justify-center items-center text-gray-500">
+        Loading...
+      </div>
+    );
+
+  // If user already has a booking, show modal instead
+  if (hasBooking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div className="bg-white rounded-xl shadow-lg p-6 max-w-md text-center">
+          <h2 className="text-2xl font-bold mb-4 text-gray-800">
+            You Already Have a Booking
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Our records show that you have already made a booking. 
+            You can view your booking details in your profile.
+          </p>
+          <button
+            onClick={() => navigate("/profile")}
+            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
+          >
+            View Your Booking
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2>Booking for {event.title}</h2>
-      <input
-        type="text"
-        placeholder="Your Name"
-        value={attendeeName}
-        onChange={(e) => setAttendeeName(e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder="Contact Number or Email"
-        value={contactNumber}
-        onChange={(e) => setContactNumber(e.target.value)}
-      />
-      <label>
-        <input
-          type="checkbox"
-          checked={plus1}
-          onChange={(e) => setPlus1(e.target.checked)}
-        />
-        Plus 1 Ticket
-      </label>
-      <button onClick={handleBooking}>
-        Pay LKR {event.price * (plus1 ? 2 : 1)}
-      </button>
+    <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 pt-24 flex justify-center px-4">
+      <div className="w-full max-w-xl bg-white shadow-xl rounded-2xl p-8 border border-gray-100 mb-10">
+        <h2 className="text-3xl font-bold text-gray-800 mb-2 text-center tracking-tight">
+          {event.title}
+        </h2>
+        <p className="text-center text-gray-500 mb-8">
+          Secure your entry by completing the form below
+        </p>
+
+        <div className="space-y-6">
+          {/* User details */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-3 border-l-4 border-blue-600 pl-3">
+              Your Details
+            </h3>
+
+            <label className="block text-gray-600 font-medium mb-1">Name</label>
+            <input
+              type="text"
+              value={attendeeName}
+              readOnly
+              className="w-full border border-gray-300 rounded-lg p-3 bg-gray-100"
+            />
+
+            <label className="block text-gray-600 font-medium mt-4 mb-1">
+              Contact Number
+            </label>
+            <input
+              type="text"
+              value={contactNumber}
+              readOnly
+              className="w-full border border-gray-300 rounded-lg p-3 bg-gray-100"
+            />
+
+            <label className="block text-gray-600 font-medium mt-4 mb-1">
+              Class
+            </label>
+            <input
+              type="text"
+              value={userClass}
+              readOnly
+              className="w-full border border-gray-300 rounded-lg p-3 bg-gray-100"
+            />
+          </div>
+
+          {/* Plus One */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-3 border-l-4 border-green-600 pl-3">
+              Plus One
+            </h3>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={plus1}
+                onChange={(e) => setPlus1(e.target.checked)}
+                className="h-5 w-5"
+              />
+              <label className="text-gray-700 font-medium">Add a Plus One</label>
+            </div>
+
+            {plus1 && (
+              <div className="mt-4">
+                <label className="block text-gray-600 font-medium mb-1">
+                  Plus One Name
+                </label>
+                <input
+                  type="text"
+                  value={plus1Name}
+                  onChange={(e) => setPlus1Name(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-3"
+                  placeholder="Enter plus one’s name"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Pricing */}
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 mt-4 shadow-inner">
+            <div className="flex justify-between text-gray-700 font-medium">
+              <span>Tickets:</span>
+              <span>{plus1 ? "2 Tickets" : "1 Ticket"}</span>
+            </div>
+            <div className="flex justify-between text-lg font-bold mt-2 text-gray-900">
+              <span>Total Payable:</span>
+              <span className="text-blue-600">
+                LKR {event.price * (plus1 ? 2 : 1)}
+              </span>
+            </div>
+          </div>
+
+          {/* Submit */}
+          <button
+            onClick={handleBooking}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg text-lg shadow-md"
+          >
+            Continue to Payment
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
