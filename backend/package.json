@@ -4,10 +4,10 @@
   "description": "Reunion ticketing backend",
   "main": "index.js",
   "type": "module",
-  "scripts": {
-    "dev": "nodemon index.js",
-    "start": "react-scripts start --host 0.0.0.0"
-  },
+"scripts": {
+  "dev": "nodemon index.js",
+  "start": "node index.js"
+},
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.8.0",
