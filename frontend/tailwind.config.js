@@ -8,10 +8,6 @@ module.exports = {
   theme: {
     extend: {
     fontFamily: {
-      aeonik: ["Aeonik", "sans-serif"],
-      antelope: ["Antelope", "serif"],
-      timernis: ["Timernis", "serif"],
-      balkey: ["Balkey", "serif"],
       sohneBreit: ["SohneBreit", "serif"],
     },
   },
